@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  minio:
+    container_name: minio
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    env_file:
+      - .env
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - ./.data/minio:/data
+    networks:
+      - xfer
+
+  mc:
+    image: minio/mc
+    depends_on:
+      - minio
+    entrypoint: /bin/sh
+    command: >
+      -c "
+      echo 'waiting for minio to start and verify credentials';
+      until mc alias set myminio http://minio:9000 \$MINIO_ACCESS_KEY_ID \$MINIO_SECRET_ACCESS_KEY; do
+        sleep 1
+      done;
+      echo 'creating ${MINIO_BUCKET} bucket in minio';
+      mc mb myminio/\${MINIO_BUCKET};
+      echo 'copying data to ${MINIO_BUCKET} bucket in minio';
+      mc cp --recursive /data-transfer/ myminio/${MINIO_BUCKET}/;
+      echo 'updating policy to public for ${MINIO_BUCKET}';
+      mc anonymous set public myminio/\${MINIO_BUCKET};
+      "
+    volumes:
+      - ./data-transfer:/data-transfer
+    networks:
+      - xfer
+
+  stac-browser:
+    image: public.ecr.aws/dewberry/stac-browser
+    ports:
+      - '8080:8080'
+    networks:
+      - xfer
+
+networks:
+  xfer:
+    driver: bridge

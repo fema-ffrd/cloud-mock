@@ -39,7 +39,7 @@ services:
       - xfer
 
   stac-browser:
-    image: public.ecr.aws/dewberry/stac-browser
+    image: public.ecr.aws/dewberry/stac-browser:linux-latest
     ports:
       - '8080:8080'
     networks:
